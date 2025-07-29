@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% load search_extras %}
+
+{% block title %}{{ app.name }} - App Details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <!-- App Header -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h1 class="card-title">{{ app.name }}</h1>
+                        <p class="card-text">
+                            <span class="badge bg-primary">{{ app.category }}</span>
+                            {% if app.type %}
+                                <span class="badge bg-secondary">{{ app.type }}</span>
+                            {% endif %}
+                        </p>
+                        
+                        {% if app.rating %}
+                            <div class="mb-3">
+                                <span class="rating-stars fs-5">
+                                    <!-- {% for i in "12345" %}
+                                        {% if forloop.counter <= app.rating %}
+                                            <i class="fas fa-star"></i>
+                                        {% else %}
+                                            <i class="far fa-star"></i>
+                                        {% endif %}
+                                    {% endfor %} -->
+                                    {% render_stars app.rating %}
+                                </span>
+                                <span class="h5 ms-2">{{ app.rating|floatformat:1 }}</span>
+                                <span class="text-muted">({{ app.reviews_count }} reviews)</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        {% if app.price %}
+                            <h3 class="text-success">{{ app.price }}</h3>
+                        {% endif %}
+                        {% if app.installs %}
+                            <p class="text-muted">
+                                <i class="fas fa-download"></i> {{ app.installs }} installs
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- App Info -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> App Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        {% if app.size %}
+                            <p><strong>Size:</strong> {{ app.size }}</p>
+                        {% endif %}
+                        {% if app.content_rating %}
+                            <p><strong>Content Rating:</strong> {{ app.content_rating }}</p>
+                        {% endif %}
+                        {% if app.current_version %}
+                            <p><strong>Current Version:</strong> {{ app.current_version }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        {% if app.android_version %}
+                            <p><strong>Android Version:</strong> {{ app.android_version }}</p>
+                        {% endif %}
+                        {% if app.last_updated %}
+                            <p><strong>Last Updated:</strong> {{ app.last_updated }}</p>
+                        {% endif %}
+                        {% if app.genres %}
+                            <p><strong>Genres:</strong> {{ app.genres }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Reviews Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-comments"></i> User Reviews</h5>
+            </div>
+            <div class="card-body">
+                <!-- UPDATED REVIEW FORM SECTION WITH SUPERVISOR CHECK -->
+                {% if user.is_authenticated %}
+                    {% if user_has_supervisor %}
+                        <!-- Show review form when user has supervisor -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6><i class="fas fa-pen"></i> Write a Review</h6>
+                                <small class="text-muted">
+                                    <i class="fas fa-user-check"></i> 
+                                    Will be reviewed by {{ supervisor_display_name }}
+                                </small>
+                            </div>
+                            <form method="POST">
+                                {% csrf_token %}
+                                {{ form|crispy }}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i> Submit Review
+                                </button>
+                            </form>
+                        </div>
+                        <hr>
+                    {% else %}
+                        <!-- Show warning when user has no supervisor -->
+                        <div class="mb-4">
+                            <div class="alert alert-warning border-start border-4 border-warning">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-exclamation-triangle fa-lg me-2"></i>
+                                    <h6 class="mb-0">Cannot Submit Review</h6>
+                                </div>
+                                <p class="mb-2">
+                                    You cannot submit reviews because no supervisor is assigned to your account.
+                                </p>
+                                <p class="mb-0">
+                                    <strong><i class="fas fa-info-circle"></i> What to do:</strong> 
+                                    Please contact your administrator to assign a supervisor to your account.
+                                </p>
+                            </div>
+                        </div>
+                        <hr>
+                    {% endif %}
+                {% endif %}
+
+                <!-- Display approved user reviews -->
+                {% if user_reviews %}
+                    <h6><i class="fas fa-star"></i> Community Reviews</h6>
+                    {% for review in user_reviews %}
+                        <div class="review-card border-start border-4 border-primary p-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <strong>{{ review.user.username }}</strong>
+                                    <span class="rating-stars ms-2">
+                                        <!-- {% for i in "12345" %}
+                                            {% if forloop.counter <= review.rating %}
+                                                <i class="fas fa-star"></i>
+                                            {% else %}
+                                                <i class="far fa-star"></i>
+                                            {% endif %}
+                                        {% endfor %} -->
+                                        {% render_stars app.rating %}
+                                    </span>
+                                    <span class="badge 
+                                        {{ review.sentiment|sentiment_badge_class }}">
+                                        {{ review.sentiment }}
+                                    </span>
+                                </div>
+                                <small class="text-muted">{{ review.created_at|date:"M d, Y" }}</small>
+                            </div>
+                            <p class="mb-0">{{ review.review_text }}</p>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No community reviews yet. Be the first to review this app!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- CSV Reviews Section -->
+        {% if csv_reviews %}
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar"></i> Analysis Reviews</h5>
+                </div>
+                <div class="card-body">
+                    {% for review in csv_reviews|slice:":10" %}
+                        <div class="review-card border-start border-4 p-3 mb-3 
+                                    {{ review.sentiment|sentiment_class }}">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge 
+                                    {{ review.sentiment|sentiment_badge_class }}">
+                                    {{ review.sentiment }}
+                                </span>
+                                <small class="text-muted">
+                                    Polarity: {{ review.sentiment_polarity|floatformat:2 }}
+                                </small>
+                            </div>
+                            <p class="mb-0">{{ review.translated_review|truncatewords:50 }}</p>
+                        </div>
+                    {% endfor %}
+                    
+                    {% if csv_reviews.count > 10 %}
+                        <p class="text-center text-muted">
+                            Showing 10 of {{ csv_reviews.count }} reviews
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-chart-pie"></i> Quick Stats</h6>
+            </div>
+            <div class="card-body">
+                {% if app.rating %}
+                    <div class="text-center mb-3">
+                        <div class="display-4 text-primary">{{ app.rating|floatformat:1 }}</div>
+                        <div class="rating-stars">
+                            <!-- {% for i in "12345" %}
+                                {% if forloop.counter <= app.rating %}
+                                    <i class="fas fa-star"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %} -->
+                            {% render_stars app.rating %}
+                        </div>
+                        <small class="text-muted">{{ app.reviews_count }} reviews</small>
+                    </div>
+                {% endif %}
+                
+                <div class="list-group list-group-flush">
+                    {% if app.installs %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-download text-primary"></i> Downloads</span>
+                            <span class="badge bg-primary rounded-pill">{{ app.installs }}</span>
+                        </div>
+                    {% endif %}
+                    {% if app.size %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-hdd text-success"></i> Size</span>
+                            <span>{{ app.size }}</span>
+                        </div>
+                    {% endif %}
+                    {% if app.type %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-tag text-warning"></i> Type</span>
+                            <span>{{ app.type }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- UPDATED SIDEBAR LOGIN/REGISTER SECTION -->
+        {% if not user.is_authenticated %}
+            <div class="card mt-3">
+                <div class="card-body text-center">
+                    <h6><i class="fas fa-user-edit"></i> Want to write a review?</h6>
+                    <p class="text-muted small">Login to share your experience with this app.</p>
+                    <a href="{% url 'login' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </a>
+                    <a href="{% url 'register' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-user-plus"></i> Register
+                    </a>
+                </div>
+            </div>
+        {% elif user.is_authenticated and not user_has_supervisor %}
+            <!-- Show admin contact info for users without supervisor -->
+            <div class="card mt-3">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="fas fa-user-cog"></i> Account Setup Required</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-2">
+                        Your account needs a supervisor assignment to write reviews.
+                    </p>
+                    <div class="alert alert-light small mb-0">
+                        <strong>Contact:</strong> Your system administrator to complete account setup.
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,178 @@
+<!-- templates/search_app/search_results.html -->
+{% extends 'base.html' %}
+
+{% block title %}Search Results - {{ query }}{% endblock %}
+{% load search_extras %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8 mx-auto">
+        <form method="GET" action="{% url 'search_results' %}" class="position-relative">
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    name="q" 
+                    id="search-input"
+                    class="form-control"
+                    placeholder="Search for apps..."
+                    value="{{ query }}"
+                    autocomplete="off"
+                >
+                <button class="btn btn-primary" type="submit">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+            <div id="suggestions" class="suggestions-dropdown"></div>
+        </form>
+    </div>
+</div>
+
+{% if query %}
+    <div class="mb-3">
+        <h4>Search Results for "{{ query }}"</h4>
+        {% if page_obj %}
+            <p class="text-muted">Found {{ page_obj.paginator.count }} app{{ page_obj.paginator.count|pluralize }}</p>
+        {% endif %}
+    </div>
+{% endif %}
+
+<div class="row">
+    {% for app in page_obj %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card app-card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <a href="{% url 'app_detail' app.id %}" class="text-decoration-none">
+                            {{ app.name }}
+                        </a>
+                    </h5>
+                    <p class="card-text">
+                        <span class="badge bg-secondary">{{ app.category }}</span>
+                    </p>
+                    
+                    {% if app.rating %}
+                        <div class="mb-2">
+                            <span class="rating-stars">
+                                <!-- {% for i in "12345" %}
+                                    {% if forloop.counter <= app.rating %}
+                                        <i class="fas fa-star"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %} -->
+                                {% render_stars app.rating "sm" %}  <!-- Small stars -->
+                            </span>
+                            <span class="text-muted ms-1">({{ app.rating|floatformat:1 }})</span>
+                        </div>
+                    {% endif %}
+                    
+                    <p class="card-text text-muted small">
+                        {% if app.installs %}
+                            <i class="fas fa-download"></i> {{ app.installs }} installs<br>
+                        {% endif %}
+                        {% if app.size %}
+                            <i class="fas fa-hdd"></i> {{ app.size }}
+                        {% endif %}
+                    </p>
+                    
+                    <p class="card-text">{{ app.genres|default:"" }}</p>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'app_detail' app.id %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-info-circle"></i> View Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h4>No apps found</h4>
+                <p class="text-muted">
+                    {% if query %}
+                        No apps match your search for "{{ query }}". Try different keywords.
+                    {% else %}
+                        Enter a search term to find apps.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ query }}&page=1">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ query }}&page={{ page_obj.previous_page_number }}">Previous</a>
+                </li>
+            {% endif %}
+            
+            <li class="page-item active">
+                <span class="page-link">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+            </li>
+            
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ query }}&page={{ page_obj.next_page_number }}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ query }}&page={{ page_obj.paginator.num_pages }}">Last</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#search-input').on('input', function() {
+        const query = $(this).val();
+        if (query.length >= 3) {
+            $.get('{% url "search_suggestions" %}', { q: query })
+                .done(function(data) {
+                    const suggestions = $('#suggestions');
+                    suggestions.empty();
+                    
+                    if (data.length > 0) {
+                        data.forEach(function(suggestion) {
+                            suggestions.append(
+                                `<div class="suggestion-item" data-value="${suggestion}">
+                                    ${suggestion}
+                                </div>`
+                            );
+                        });
+                        suggestions.show();
+                    } else {
+                        suggestions.hide();
+                    }
+                });
+        } else {
+            $('#suggestions').hide();
+        }
+    });
+    
+    $(document).on('click', '.suggestion-item', function() {
+        const value = $(this).data('value');
+        $('#search-input').val(value);
+        $('#suggestions').hide();
+    });
+    
+    $(document).click(function(e) {
+        if (!$(e.target).closest('.search-container').length) {
+            $('#suggestions').hide();
+        }
+    });
+});
+</script>
+{% endblock %}
