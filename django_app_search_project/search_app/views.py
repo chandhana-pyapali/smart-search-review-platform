@@ -12,6 +12,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
 import numpy as np
 
+from .utils import TextSimilarityEngine
+
 from .models import App, AppReview, UserReview, UserProfile
 from .forms import CustomUserCreationForm, UserReviewForm
 
@@ -70,17 +72,11 @@ def enhance_search_with_similarity(query, queryset):
     if not apps_list:
         return apps_list
     
-    # Create text corpus for similarity calculation
     app_texts = [f"{app.name} {app.category} {app.genres or ''}" for app in apps_list]
-    app_texts.append(query)
     
-    # Calculate TF-IDF similarity
-    vectorizer = TfidfVectorizer(stop_words='english', lowercase=True)
-    tfidf_matrix = vectorizer.fit_transform(app_texts)
-    
-    # Calculate cosine similarity between query and each app
-    query_vector = tfidf_matrix[-1]
-    similarities = cosine_similarity(query_vector, tfidf_matrix[:-1]).flatten()
+    similarity_engine = TextSimilarityEngine()
+
+    similarities = similarity_engine.calculate_similarity(query, app_texts)
     
     # Sort apps by similarity score
     app_similarity_pairs = list(zip(apps_list, similarities))
