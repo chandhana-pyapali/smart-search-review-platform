@@ -152,11 +152,38 @@ def supervisor_dashboard(request):
         return redirect('home')
     
     supervised_users = User.objects.filter(userprofile__supervisor=request.user)
-    pending_reviews = UserReview.objects.filter(user__in=supervised_users, status='pending').order_by('-created_at')
+    # pending_reviews = UserReview.objects.filter(user__in=supervised_users, status='pending').order_by('-created_at')
     
+    # Get all reviews from supervised users
+    all_reviews = UserReview.objects.filter(
+        user__in=supervised_users
+    ).select_related('app', 'user', 'approved_by').order_by('-created_at')
+    
+    # Separate by status
+    pending_reviews = all_reviews.filter(status='pending')
+    
+    # Paginate approved and rejected reviews
+    approved_reviews_list = all_reviews.filter(status='approved')
+    rejected_reviews_list = all_reviews.filter(status='rejected')
+    
+    # Pagination for approved reviews
+    approved_paginator = Paginator(approved_reviews_list, 10)
+    approved_page = request.GET.get('approved_page', 1)
+    approved_reviews = approved_paginator.get_page(approved_page)
+    
+    # Pagination for rejected reviews  
+    rejected_paginator = Paginator(rejected_reviews_list, 10)
+    rejected_page = request.GET.get('rejected_page', 1)
+    rejected_reviews = rejected_paginator.get_page(rejected_page)
+
     return render(request, 'search_app/supervisor_dashboard.html', {
         'pending_reviews': pending_reviews,
-        'supervised_users_count': supervised_users.count()
+        'approved_reviews': approved_reviews,
+        'rejected_reviews': rejected_reviews,
+        'supervised_users_count': supervised_users.count(),
+        'pending_count': pending_reviews.count(),
+        'approved_count': approved_reviews_list.count(),
+        'rejected_count': rejected_reviews_list.count(),
     })
 
 @login_required

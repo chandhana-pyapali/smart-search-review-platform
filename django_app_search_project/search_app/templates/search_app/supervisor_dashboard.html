@@ -6,138 +6,188 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-tasks"></i> Supervisor Dashboard</h2>
-    <span class="badge bg-warning fs-6">{{ pending_reviews.count }} Pending Review{{ pending_reviews.count|pluralize }}</span>
+    <div class="d-flex align-items-center">
+        <span class="badge bg-info me-2">
+            <i class="fas fa-users"></i> Managing {{ supervised_users_count }} users
+        </span>
+        <span class="badge bg-warning">
+            <i class="fas fa-clock"></i> {{ pending_count }} Pending
+        </span>
+    </div>
 </div>
 
-{% if pending_reviews %}
-    <div class="row">
-        {% for review in pending_reviews %}
-            <div class="col-md-6 mb-4">
-                <div class="card border-start border-4 {{ review.sentiment|sentiment_class }} h-100">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">
-                            <a href="{% url 'app_detail' review.app.id %}" class="text-decoration-none">
-                                {{ review.app.name }}
-                            </a>
-                        </h6>
-                        <div>
-                            <span class="badge bg-warning">Pending</span>
-                            <!-- {% if review.sentiment %}
-                                <span class="badge {{ review.sentiment|sentiment_badge_class }}">
-                                    {{ review.sentiment }}
-                                </span>
-                            {% endif %} -->
-                        </div>
-                    </div>
-                    <div class="card-body d-flex flex-column">
-                        <!-- USER INFO -->
-                        <div class="mb-3">
-                            <small class="text-muted">
-                                <i class="fas fa-user"></i> {{ review.user.username }} |
-                                <i class="fas fa-calendar"></i> {{ review.created_at|date:"M d, Y H:i" }}
-                            </small>
-                        </div>
-                        
-                        <!-- COMPACT SENTIMENT ANALYSIS SECTION -->
-                        {% if review.sentiment %}
-                            <div class="alert alert-light border-start border-4 {{ review.sentiment|sentiment_class }} mb-3 py-2">
-                                <!-- Header with contradiction flag -->
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h6 class="mb-0">
-                                        <i class="fas fa-brain"></i> Enhanced AI Analysis
-                                    </h6>
-                                    {% if review.has_text_rating_mismatch %}
-                                        <span class="badge bg-warning badge-sm">
-                                            <i class="fas fa-exclamation-triangle"></i> Mismatch
-                                        </span>
-                                    {% endif %}
-                                </div>
-                                
-                                <!-- Sentiment info in single row -->
-                                <div class="row align-items-center">
-                                    <div class="col-7">
-                                        <span class="badge {{ review.sentiment|sentiment_badge_class }}">
-                                            Sentiment: {{ review.sentiment }}
-                                        </span>
-                                        <span class="badge {{ review.get_sentiment_confidence|confidence_badge_class }}">
-                                            Confidence: {{ review.get_sentiment_confidence }}
-                                        </span>
-                                    </div>
-                                    <div class="col-5">
-                                        <small class="text-muted">
-                                            Text Analysis: {{ review.text_sentiment_polarity|floatformat:1 }}<br>
-                                            Rating Analysis: {{ review.rating_sentiment_polarity|floatformat:1 }}
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
-                        {% endif %}
-                        
-                        <!-- RECOMMENDATION ALERTS - FULL WIDTH, COMPACT -->
-                        {% if review.sentiment %}
-                            {% if review.sentiment == 'Negative' and review.confidence_score > 0.7 %}
-                                <div class="alert alert-danger alert-sm py-1 mb-2">
-                                    <small>
-                                        <strong>⚠️ High confidence negative</strong> - Consider rejection
-                                    </small>
-                                </div>
-                            {% elif review.sentiment == 'Positive' and review.confidence_score > 0.7 %}
-                                <div class="alert alert-success alert-sm py-1 mb-2">
-                                    <small>
-                                        <strong>✅ High confidence positive</strong> - Consider approval
-                                    </small>
-                                </div>
-                            {% elif review.has_text_rating_mismatch %}
-                                <div class="alert alert-warning alert-sm py-1 mb-2">
-                                    <small>
-                                        <strong>🤔 Mixed signals</strong> - Manual review needed, possible sarcasm or error detected
-                                    </small>
-                                </div>
-                            {% endif %}
-                        {% endif %}
-                        
-                        <!-- RATING DISPLAY -->
-                        <div class="mb-3">
-                            <span class="rating-stars">
-                                {% render_stars review.rating %}
-                            </span>
-                            <span class="ms-2">{{ review.rating }}/5</span>
-                        </div>
-                        
-                        <!-- REVIEW TEXT - FLEXIBLE GROW -->
-                        <div class="flex-grow-1 mb-3">
-                            <p class="card-text mb-0">{{ review.review_text }}</p>
-                        </div>
-                    </div>
-                    
-                    <!-- BUTTONS ALWAYS AT BOTTOM -->
-                    <div class="card-footer mt-auto">
-                        <form method="POST" action="{% url 'approve_review' review.id %}" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" name="action" value="approve" 
-                                    class="btn btn-success btn-sm"
-                                    onclick="return confirm('Approve this review?')">
-                                <i class="fas fa-check"></i> Approve
-                            </button>
-                        </form>
-                        <form method="POST" action="{% url 'approve_review' review.id %}" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" name="action" value="reject" 
-                                    class="btn btn-danger btn-sm"
-                                    onclick="return confirm('Reject this review?')">
-                                <i class="fas fa-times"></i> Reject
-                            </button>
-                        </form>
-                    </div>
-                </div>
+<!-- Tab Navigation -->
+<ul class="nav nav-tabs mb-4" id="reviewTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" 
+                type="button" role="tab" aria-controls="pending" aria-selected="true">
+            <i class="fas fa-clock text-warning"></i> 
+            Pending 
+            <span class="badge bg-warning ms-1">{{ pending_count }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="approved-tab" data-bs-toggle="tab" data-bs-target="#approved" 
+                type="button" role="tab" aria-controls="approved" aria-selected="false">
+            <i class="fas fa-check-circle text-success"></i> 
+            Approved 
+            <span class="badge bg-success ms-1">{{ approved_count }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="rejected-tab" data-bs-toggle="tab" data-bs-target="#rejected" 
+                type="button" role="tab" aria-controls="rejected" aria-selected="false">
+            <i class="fas fa-times-circle text-danger"></i> 
+            Rejected 
+            <span class="badge bg-danger ms-1">{{ rejected_count }}</span>
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="reviewTabsContent">
+    
+    <!-- PENDING REVIEWS TAB -->
+    <div class="tab-pane fade show active" id="pending" role="tabpanel" aria-labelledby="pending-tab">
+        {% if pending_reviews %}
+            <div class="row">
+                {% for review in pending_reviews %}
+                    {% include 'search_app/partials/review_card.html' with review=review show_actions=True %}
+                {% endfor %}
             </div>
-        {% endfor %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-clipboard-check fa-3x text-success mb-3"></i>
+                <h4>All caught up!</h4>
+                <p class="text-muted">No pending reviews to process at the moment.</p>
+            </div>
+        {% endif %}
     </div>
-{% else %}
-    <div class="text-center py-5">
-        <i class="fas fa-clipboard-check fa-3x text-success mb-3"></i>
-        <h4>All caught up!</h4>
-        <p class="text-muted">No pending reviews to process at the moment.</p>
+
+    <!-- APPROVED REVIEWS TAB -->
+    <div class="tab-pane fade" id="approved" role="tabpanel" aria-labelledby="approved-tab">
+        {% if approved_reviews %}
+            <div class="row">
+                {% for review in approved_reviews %}
+                    {% include 'search_app/partials/review_card.html' with review=review show_actions=False %}
+                {% endfor %}
+            </div>
+            
+            <!-- Pagination for approved reviews -->
+            {% if approved_reviews.has_other_pages %}
+                <nav aria-label="Approved reviews pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if approved_reviews.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?status=approved&page={{ approved_reviews.previous_page_number }}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">{{ approved_reviews.number }} of {{ approved_reviews.paginator.num_pages }}</span>
+                        </li>
+                        
+                        {% if approved_reviews.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?status=approved&page={{ approved_reviews.next_page_number }}">Next</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <h4>No Approved Reviews Yet</h4>
+                <p class="text-muted">Reviews you approve will appear here.</p>
+            </div>
+        {% endif %}
     </div>
-{% endif %}
+
+    <!-- REJECTED REVIEWS TAB -->
+    <div class="tab-pane fade" id="rejected" role="tabpanel" aria-labelledby="rejected-tab">
+        {% if rejected_reviews %}
+            <div class="row">
+                {% for review in rejected_reviews %}
+                    {% include 'search_app/partials/review_card.html' with review=review show_actions=False %}
+                {% endfor %}
+            </div>
+            
+            <!-- Pagination for rejected reviews -->
+            {% if rejected_reviews.has_other_pages %}
+                <nav aria-label="Rejected reviews pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if rejected_reviews.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?status=rejected&page={{ rejected_reviews.previous_page_number }}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">{{ rejected_reviews.number }} of {{ rejected_reviews.paginator.num_pages }}</span>
+                        </li>
+                        
+                        {% if rejected_reviews.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?status=rejected&page={{ rejected_reviews.next_page_number }}">Next</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-times-circle fa-3x text-danger mb-3"></i>
+                <h4>No Rejected Reviews Yet</h4>
+                <p class="text-muted">Reviews you reject will appear here.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add custom CSS for better tab styling -->
+<style>
+.nav-tabs .nav-link {
+    border-radius: 8px 8px 0 0;
+    margin-right: 2px;
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link.active {
+    background-color: #f8f9fa;
+    border-color: #dee2e6 #dee2e6 #f8f9fa;
+}
+
+.review-card-approved {
+    border-left: 4px solid #198754 !important;
+    background-color: #f8fff9;
+}
+
+.review-card-rejected {
+    border-left: 4px solid #dc3545 !important;
+    background-color: #fff8f8;
+}
+
+.review-status-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+</style>
+
+<!-- Add JavaScript for tab memory -->
+<script>
+$(document).ready(function() {
+    // Remember last active tab
+    var activeTab = localStorage.getItem('activeTab');
+    if (activeTab) {
+        $('#' + activeTab).tab('show');
+    }
+    
+    // Save active tab on change
+    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        localStorage.setItem('activeTab', e.target.id);
+    });
+});
+</script>
 {% endblock %}
